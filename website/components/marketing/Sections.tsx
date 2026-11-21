@@ -448,13 +448,7 @@ export function Security() {
               ))}
             </ul>
             <p className="panel__foot">
-              <a
-                href={`${site.repo}/blob/main/docs/DECISIONS.md`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Read the reasoning &rarr;
-              </a>
+              <Link href="/docs/decisions">Read the reasoning &rarr;</Link>
             </p>
           </aside>
         </Reveal>

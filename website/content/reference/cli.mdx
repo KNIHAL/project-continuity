@@ -1,0 +1,75 @@
+---
+title: CLI commands
+description: All pcs commands grouped by area, with the options and exit codes that matter.
+---
+
+import { Callout } from "nextra/components";
+
+# CLI commands
+
+The command is `pcs`. Run `pcs <command> --help` for the options of any command, and `pcs --version` for the installed version. Several commands accept `--json` for scripts.
+
+## Setup
+
+| Command | What it does |
+| --- | --- |
+| `pcs init` | Creates `.pcs/` in the current project (git-excluded, owner-only) |
+| `pcs doctor [--fix] [--json]` | Checks the installation and repairs what it safely can. See [Maintenance](/docs/guides/maintenance) |
+| `pcs deinit [--yes]` | Removes everything PCS added to a project. A dry run unless `--yes` is given |
+| `pcs config show`, `pcs config init` | Shows or scaffolds the global and project policy files |
+| `pcs connect <client>` | Writes the MCP entry for `claude-desktop`, `cursor` or `claude-code`. Options: `--global` (Cursor), `--read-only`, `--allow-test`, `--portable`, `--remove` |
+| `pcs agents install`, `pcs agents uninstall` | Adds or removes the marked instruction block in `CLAUDE.md`, `AGENTS.md` and Cursor rules |
+| `pcs hooks install`, `pcs hooks uninstall`, `pcs hooks status` | Manages Claude Code hooks |
+| `pcs autostart install`, `pcs autostart uninstall`, `pcs autostart status` | Starts the watcher at login |
+
+## Work
+
+| Command | What it does |
+| --- | --- |
+| `pcs session start --agent <name>` | Starts a session for an agent |
+| `pcs session end --reason <reason>` | Ends the active session. `limit` is one example reason |
+| `pcs session current`, `pcs session list` | Shows the active session, or lists sessions |
+| `pcs task add`, `pcs task list`, `pcs task update` | Manages tasks. A task's status is never rewritten by evidence |
+| `pcs note add <kind> "<text>"`, `pcs note list`, `pcs note resolve` | Records notes such as `task` and `next`. Every note is `reported` |
+| `pcs snapshot [take]`, `pcs snapshot list`, `pcs snapshot diff` | Records the repository state (immutable) |
+| `pcs test [--task <id>] -- <command>` | Runs a command itself and records exit code, duration and output as `verified` evidence |
+| `pcs evidence list`, `pcs evidence show`, `pcs evidence link` | Browses test runs and links them to tasks |
+
+## Handoff
+
+| Command | What it does |
+| --- | --- |
+| `pcs handoff [--out <file>] [--stdout]` | Writes `.pcs/HANDOFF.md`, or elsewhere, or prints it |
+| `pcs resume --agent <name> [--prompt]` | Checks the handoff, snapshots the repo and prints the brief. `--prompt` wraps it as a paste-ready prompt |
+| `pcs status` | Shows the current state of the project |
+| `pcs watch` | Observes the project in the background. See [Watcher](/docs/guides/watcher) |
+
+## Trust
+
+| Command | What it does |
+| --- | --- |
+| `pcs verify [--anchor <file>]` | Checks the hash chain, and optionally a signed anchor |
+| `pcs anchor` | Writes a signed anchor of the current log head |
+| `pcs log [--type <pattern>] [--provenance <level>] [--after <value>] [-n <count>]` | Shows recent events, oldest first |
+| `pcs export [--format json or md] [-o <file>] [--from <id>] [--to <id>] [--check <file>]` | Writes, or checks, an audit export |
+
+## Many projects
+
+| Command | What it does |
+| --- | --- |
+| `pcs workspace add`, `pcs workspace remove`, `pcs workspace list` | Manages the registry of projects |
+| `pcs dashboard [--workspace]` | Starts the read-only dashboard on 127.0.0.1 |
+| `pcs mcp [--workspace] [--project <path>] [--agent <name>] [--read-only] [--allow-test]` | Starts the MCP server. See [MCP tools](/docs/reference/mcp-tools) |
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | OK |
+| 1 | Error. For `pcs test`: the command did not pass. For `pcs doctor`: a check failed |
+| 2 | Integrity failure. Handoff, resume and export still produce their output, flagged |
+
+<Callout type="info">
+  The reference above lists the options documented in the project's README and decision records. Run
+  `pcs <command> --help` for the authoritative list for your installed version.
+</Callout>

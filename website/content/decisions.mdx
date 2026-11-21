@@ -1,0 +1,77 @@
+---
+title: Decisions
+description: The architecture and security decisions behind PCS, condensed from the project's decision record.
+---
+
+import { Callout } from "nextra/components";
+
+# Decisions
+
+A condensed view of the architecture and security decisions that are costly to reverse. The full, authoritative record is [docs/DECISIONS.md](https://github.com/KNIHAL/pcskit/blob/main/docs/DECISIONS.md) in the repository.
+
+## Architecture
+
+- `src/core` is the only place with logic. The CLI, MCP server and dashboard are thin wrappers over it, so they cannot drift apart.
+- Storage is SQLite through Node's built-in `node:sqlite`: no native build step, Node 22.13 or newer. Schema changes only by appending to the migrations list, `PRAGMA user_version` tracks it, and a newer database is refused.
+- State lives in `<repo>/.pcs/`, excluded through `.git/info/exclude`, so no tracked file is touched.
+- Git is observed by running `git` with an argument array, never a shell string.
+- Observation (git, file hashing) happens before the database transaction, and the transaction only writes. Session start and end never fail because observing failed.
+
+## Evidence
+
+- Every event carries a provenance: `verified`, `reported` or `inferred`. Handoffs keep them separate, and an AI's completion claim is never `verified`.
+- A done task is verified only with a passing linked run whose repo fingerprint equals the current one. A passing run on different code is stale, and no passing run means reported only. A task's status is never rewritten by evidence.
+- Notes are events, not a table, so editing or deleting one is caught by `pcs verify` and there is nothing else to keep in sync.
+
+## Integrity
+
+- Events are append-only (SQLite triggers) and hash-chained with SHA-256. Snapshots and test runs are immutable, and each digest is stored in a hash-chained event.
+- The chain alone does not detect truncation of the newest events or a full recomputed rewrite. A signed anchor, with the ed25519 key kept outside the project, closes that gap.
+- JSON exports are self-checking without PCS. The algorithm is written into the file.
+
+## Handoff and resume
+
+- The default handoff location is `.pcs/HANDOFF.md`, git-excluded, so writing a handoff never dirties the state PCS observes.
+- Resume treats an edited, deleted or missing handoff file as untrusted and rebuilds the brief from the hash-chained log, because a file on disk is an injection point.
+- Resume no longer refuses when no handoff exists. The agent that stopped is exactly the one that cannot write it, so PCS writes it at pickup.
+- Resume through MCP is a takeover: a new agent never gets recorded under a dead agent's name.
+- An integrity failure does not block the handoff. It is written with a warning and exit code 2.
+
+## Verification
+
+- `pcs test` runs the command itself, so the run is verified. The link to a task is a claim, so it is reported.
+- Commands run without a shell, with a hard timeout that kills the process tree. Only the last 8 KiB of output is stored, sanitised and redacted.
+- The repo is observed and the command run before the database is opened, so a long test run never holds a lock.
+
+## Watcher, hooks and dashboard
+
+- File events are never recorded as facts. They only trigger a fresh observation, and a snapshot is stored only when the fingerprint changed.
+- Hooks run outside the model so continuity does not depend on the agent remembering. They never fail the agent, record honest reasons (`switched`, never `completed`), and never copy recorded text into the agent's context.
+- The dashboard is read-only on purpose, bound to loopback, token-protected, and inserts data with `textContent` only.
+
+## MCP
+
+- One tool per core action, with a `pcs_` prefix. The project is fixed by `--project`, not by the client's working directory.
+- `pcs_test` is opt-in because a prompt-injected agent could abuse it. `--read-only` registers only tools that cannot change anything.
+
+## Multi-repo
+
+- One `.pcs` per repository stays. A shared database would mix unrelated tamper-evident chains and make one repo's corruption everyone's problem.
+- The workspace is only a registry in `~/.pcs/workspace.json`. With several projects registered, a missing or unknown project name is an error that lists the valid names: PCS never guesses which repo to write to.
+
+## Config and policy
+
+- Every setting can only tighten the defaults. With both a global and a project file, a command must pass both allowlists.
+- Rules that must hold belong in the global file, because the project file sits where an agent could edit it.
+
+## Quality gates
+
+- CI runs on Ubuntu, Windows and macOS with Node 22 and 24: typecheck, lint, tests, build, a smoke run of the built CLI and `npm audit`.
+- Coverage thresholds sit just under the current numbers so coverage cannot erode silently: they are floors, not goals.
+- Real layouts are tested (normal repo, git worktree, submodule, detached HEAD, no commits), along with concurrent writers and fuzzed input.
+
+<Callout type="info">
+  Several of these decisions came from real findings: concurrent writers exposed a "database is
+  locked" bug, worktrees exposed a missing git exclude, and the first two-agent test (Claude Desktop
+  to Cursor) changed how resume and identity work.
+</Callout>

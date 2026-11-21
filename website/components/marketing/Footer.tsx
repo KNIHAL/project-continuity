@@ -53,6 +53,12 @@ export function Footer() {
             <li>
               <Link href="/docs/guides/connecting-agents">Connecting agents</Link>
             </li>
+            <li>
+              <Link href="/docs/reference/cli">CLI reference</Link>
+            </li>
+            <li>
+              <Link href="/docs/security">Security</Link>
+            </li>
           </ul>
         </nav>
         <nav aria-label="Project">

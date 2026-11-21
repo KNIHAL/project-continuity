@@ -1,0 +1,50 @@
+---
+title: Security
+description: How PCS protects the projects it reads, what it deliberately does not claim, and how to report a vulnerability.
+---
+
+import { Callout } from "nextra/components";
+
+# Security
+
+PCS reads repositories and agent output that it does not trust, so it is built defensively.
+
+## What PCS does
+
+- **Local only.** No network access and no telemetry. Data lives in `.pcs/` inside your project, git-excluded and owner-only (POSIX modes, Windows ACLs).
+- **Git is read-only and hardened.** PCS runs `git` only through one adapter: an argument array (never a shell string), `core.fsmonitor=false`, `--no-optional-locks`, no prompts, a 30 s timeout, and full hex hashes only. It never bypasses git's "dubious ownership" protection.
+- **No shell.** Commands are argument arrays run with `shell: false`. `pcs test` can be limited to an allowlist.
+- **Untrusted text is sanitised** before it reaches the terminal, markdown or the dashboard. Repo-controlled strings have control characters stripped.
+- **Secrets stay out.** Event payloads are redacted before storage, and files flagged sensitive (`.env`, keys) are listed by name and never opened.
+- **Symlinks are recorded, never followed.** Paths are checked to stay inside the repo.
+- **Input is validated.** Agent names use a safe character set, and titles, notes and limits are length-capped.
+- **Policy can only tighten.** Policy files can add redaction patterns, sensitive globs and allowlists, but nothing can switch a built-in protection off. The global file is the trusted one, because a project file can be edited by an agent.
+- **The dashboard is local-only**, read-only, token-protected and served with a strict Content Security Policy. See [Dashboard](/docs/guides/dashboard).
+- **MCP is least-privilege by default.** `pcs_test` is off unless you pass `--allow-test`, and `--read-only` exposes only tools that cannot change anything.
+
+## Honest limits
+
+<Callout type="warning">
+  PCS tells you what it can and cannot prove.
+</Callout>
+
+- The hash chain proves changes only if you keep a signed anchor or an export somewhere else. Someone who can rewrite both the log and the anchor on your machine can forge history.
+- Redaction is pattern based. It cannot recognise every secret format, so add your own rules for your secrets. Custom regexes are not checked for catastrophic backtracking.
+- `reported` and `inferred` facts are labelled as such. PCS does not prove an agent told the truth.
+- Prompt injection into the AI that reads a handoff is reduced, not eliminated.
+
+## Reporting a vulnerability
+
+Please do not open a public issue. Use GitHub's private reporting: the **Security** tab, then **Report a vulnerability**, or [open an advisory directly](https://github.com/KNIHAL/pcskit/security/advisories/new).
+
+Include what you found, the steps to reproduce it, and the PCS version (`pcs --version`) and operating system. You will get a first reply within 7 days. Only the latest released version gets security fixes.
+
+### In scope
+
+- Secrets reaching the event log, handoff, export or MCP output despite redaction.
+- A way to change or delete log history without `pcs verify` noticing, outside the documented limit above.
+- Path traversal, command injection or option injection through any input: the CLI, MCP tool arguments, hook payloads, config files or git output.
+- A tool exposed over MCP that can change anything when `--read-only` is set, or that runs commands without `--allow-test`.
+- Local files or ports reachable by other users or by web pages.
+
+The full policy is [SECURITY.md](https://github.com/KNIHAL/pcskit/blob/main/SECURITY.md) in the repository, and the reasoning behind these choices is on the [Decisions](/docs/decisions) page.

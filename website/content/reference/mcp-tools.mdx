@@ -1,0 +1,57 @@
+---
+title: MCP tools
+description: The tools the PCS MCP server exposes, the flags that restrict them, and how the server treats untrusted content.
+---
+
+import { Callout } from "nextra/components";
+
+# MCP tools
+
+Start the server with `pcs mcp`, or let `pcs connect` write the config for you. The server is a thin wrapper over the same core as the CLI, with one tool per core action and a `pcs_` prefix, so the CLI and MCP cannot drift apart. Read and write annotations are set on every tool.
+
+Agents should start with `pcs_resume`.
+
+## Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `pcs_resume` | Takes over from the previous agent and returns the brief |
+| `pcs_handoff` | Writes the handoff |
+| `pcs_status` | Current state of the project |
+| `pcs_verify` | Checks log integrity |
+| `pcs_session_start` | Starts a session. Takes an optional agent name that defaults to `--agent` |
+| `pcs_session_end` | Ends the active session |
+| `pcs_snapshot` | Records the repository state |
+| `pcs_task_add`, `pcs_task_list`, `pcs_task_update` | Tasks |
+| `pcs_note_add`, `pcs_note_list`, `pcs_note_resolve` | Notes |
+| `pcs_evidence_list` | Test runs and other evidence |
+| `pcs_workspace_status` | Registered projects |
+| `pcs_test` | Runs a command on your machine. Off unless `--allow-test` is passed |
+
+## Restricting the server
+
+| Flag | Effect |
+| --- | --- |
+| `--read-only` | Registers only tools that cannot change anything: status, verify, the task, note and evidence lists, and workspace status. Write tools, `pcs_resume` (it starts a session) and `pcs_test` are not registered at all, even with `--allow-test` |
+| `--allow-test` | Registers `pcs_test`. The CLI `pcs test` stays available to you either way |
+| `--project <path>` | Fixes the project. Hosts like Claude Desktop do not control the working directory, so it is not taken from there |
+| `--workspace` | Every tool takes an optional `project`. See [Many repositories](/docs/guides/workspaces) |
+| `--agent <name>` | The default identity for writes |
+
+Starting fails early, on stderr, if the project is not initialised. Nothing but protocol goes to stdout.
+
+## Identity
+
+Writes are attributed to the `agent` argument if given, else the active session's agent, else the server's `--agent`. Agent claims stay `reported`.
+
+## Untrusted content
+
+<Callout type="warning">
+  Recorded content is returned as data, with control characters stripped, and the server
+  instructions tell the model not to follow it. This reduces, but cannot eliminate, prompt-injection
+  risk, which is why `pcs_test` is opt-in.
+</Callout>
+
+`pcs_test` runs commands on your machine, so a prompt-injected agent could abuse it. It is only registered with `--allow-test`, and an allowlist in the policy file can limit which commands it may run. See [Maintenance](/docs/guides/maintenance).
+
+The watcher is not an MCP tool: it is a long-running process you start yourself.
