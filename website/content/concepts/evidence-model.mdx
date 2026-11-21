@@ -1,0 +1,63 @@
+---
+title: Evidence model
+description: How PCS labels every fact as verified, reported or inferred, and what counts as proof that a task is done.
+---
+
+import { Callout } from "nextra/components";
+
+# Evidence model
+
+Every event PCS records carries a **provenance**. Handoffs keep the three kinds apart, so a reader can tell what is solid.
+
+| Level | Meaning | Example |
+| --- | --- | --- |
+| `verified` | PCS observed it itself | git state, file hashes, a test run PCS executed with its exit code |
+| `reported` | A person or agent claimed it | "task done", "next step is X" |
+| `inferred` | Derived from other facts | "the session was interrupted" |
+
+An AI's completion claim is never `verified`. It stays `reported`, however confident it sounds.
+
+## When is a task verified?
+
+A task counts as verified only when a passing test run that PCS executed is linked to it, and only while the code still matches the state that run saw. A done task falls into one of three classes:
+
+| Class | What it means |
+| --- | --- |
+| Verified | A passing linked run, and the repo fingerprint equals the current one |
+| Stale | A passing run, but the working tree differs from when the run started: re-run it |
+| Reported only | No passing run is linked |
+
+A done task whose latest linked run failed is also listed as an unresolved issue. A task's own status is never rewritten by evidence: PCS reports the conflict instead of changing what someone claimed.
+
+## `pcs test`: how a run becomes evidence
+
+```bash
+pcs test --task <task-id> -- npm test
+```
+
+PCS itself runs the command and sees the exit code, duration and output, so the run is `verified`. Linking the run to a task is a claim about which task it backs, so that link is `reported`.
+
+- The command is an argument array run with `shell: false`, with stdin closed and a hard timeout (default 600 s) that kills the whole process tree.
+- Windows `.cmd` and `.bat` shims such as `npm` and `npx` run through `cmd.exe`, and any argument containing shell metacharacters is refused.
+- Only the last 8 KiB of output is stored, with escape sequences and control characters stripped and secrets redacted.
+- Before running, PCS records HEAD and a fingerprint of the changed files' content hashes, so a later reader can tell whether a passing run still describes the current code.
+- `pcs test` exits 0 only if the command passed, otherwise 1.
+
+<Callout type="warning">
+  Redaction is best-effort pattern matching. It covers named tokens, quoted assignments, URL
+  passwords, Basic auth and `--token` style flags, but not secrets with no telltale key or prefix.
+  Add your own rules in the [config](/docs/guides/maintenance) for secrets that need them.
+</Callout>
+
+## What stays `reported`
+
+Anything an agent or person writes: notes, task titles, "next" steps, and the claim that a task is done. PCS labels these, with the agent's name, and does not try to prove them.
+
+## What is `inferred`
+
+Facts PCS derives rather than observes. The common one is an open or interrupted session: PCS cannot know why an agent stopped, so it says "interrupted" as `inferred`.
+
+## Related
+
+- [Handoffs and resume](/docs/concepts/handoffs)
+- [Event log and integrity](/docs/concepts/event-log)

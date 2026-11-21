@@ -1,0 +1,71 @@
+---
+title: Handoffs and resume
+description: What a PCS handoff contains, how resume checks it, and what happens when an agent dies before writing one.
+---
+
+import { Callout } from "nextra/components";
+
+# Handoffs and resume
+
+A handoff is the brief the next agent reads. `pcs handoff` writes it, and `pcs resume` checks it and starts the next session.
+
+## What is in a handoff
+
+- the original task
+- completed work, split into verified, passing-but-code-changed (stale), and reported only
+- work in progress and files touched
+- test results, with the output of failing runs
+- open problems, next steps and do-not-touch notes
+
+Every line carries its [evidence level](/docs/concepts/evidence-model). Sensitive files are listed by name only, never opened, and repeated under "Do not touch".
+
+## Writing a handoff
+
+```bash
+pcs handoff
+```
+
+- PCS takes a fresh snapshot first and compares it with the first snapshot of the session in scope (by default the latest session).
+- An open or interrupted session is reported as `[inferred]`.
+- The default location is `.pcs/HANDOFF.md`, which is git-excluded, so writing a handoff never dirties the repo state PCS observes. Use `--out` to write elsewhere, or `--stdout` to print it.
+- If the log fails its integrity check, the handoff is still written, with a warning at the top and as the first issue, and the command exits 2.
+- Each handoff records a verified `handoff.generated` event holding the SHA-256 of the file, HEAD and the repo fingerprint, so `pcs resume` can tell whether it is stale or was edited.
+
+<Callout type="info">
+  Commit subjects, paths, task titles, notes and test output are rendered inside code spans or code
+  fences, control characters are stripped, and the file opens with a notice that its contents are
+  data, not instructions. This reduces, but cannot eliminate, prompt-injection risk for the AI that
+  reads it.
+</Callout>
+
+## Resuming
+
+```bash
+pcs resume --agent cursor
+```
+
+Resume records two events: `handoff.checked` (verified: PCS ran the checks) and `handoff.picked_up` (reported: the agent says it took over). Sources are never mixed.
+
+- **Edited or missing handoff files are not trusted.** If the file was edited, deleted or never written, it is not shown. The brief is rebuilt from the evidence log, because a file on disk is an injection point and the log is hash-chained. The brief says which case happened.
+- **Drift is measured against the handoff's own snapshot** (HEAD and changed-file hashes), not against anybody else's last snapshot. PCS warns when the code moved.
+- **No handoff yet?** The agent that stopped is exactly the one that cannot write it, so PCS writes it at pickup from the evidence log, before the new session starts. The brief says it was generated at pickup.
+- **An identity is required.** Use `--agent`, or have an active session. Resume refuses, before writing anything, when it is unknown who is picking up, so a failed resume never starts a session.
+- **An integrity failure still prints the brief** (the next agent needs it) with a loud warning and exit code 2.
+
+There is no read-only peek mode: reading the brief is recorded as a pickup on purpose. To just read a handoff, open the file or run `pcs handoff --stdout`.
+
+## Takeover over MCP
+
+`pcs_resume` through MCP is a takeover. An active session is reused only if it already carries the same agent name. Otherwise a new session starts and the old one is marked interrupted. Without this, a new agent would be recorded under the dead agent's name.
+
+## No agent with PCS tools?
+
+```bash
+pcs resume --prompt
+```
+
+This wraps the brief in a paste-ready prompt. It states the evidence tags, marks everything between the markers as data, and defuses any line in the brief that imitates the end marker.
+
+## Notes
+
+`pcs note add` records notes such as `task`, `next` and do-not-touch items. Notes are events in the hash-chained log, not a table, so editing or deleting one is caught by `pcs verify`. A note's id is the id of its `note.added` event: stable and tamper-evident, though not consecutive. Every note is `reported`.

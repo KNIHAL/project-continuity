@@ -1,0 +1,63 @@
+---
+title: Maintenance
+description: Check an installation with pcs doctor, tune policy with config files, and remove PCS cleanly with pcs deinit.
+---
+
+import { Callout } from "nextra/components";
+
+# Maintenance
+
+## `pcs doctor`
+
+```bash
+pcs doctor
+pcs doctor --fix
+pcs doctor --json
+```
+
+Doctor checks:
+
+- Node (22.13 or newer) and git
+- the workspace and project initialisation
+- schema version and full log integrity
+- whether `.pcs/` is git-ignored
+- owner-only permissions (on Windows it reports a folder that is open to others, and `--fix` repairs it)
+- config validity, the watcher, autostart and Claude hooks
+
+Each check is `ok`, `warn` or `fail`, with a fix command. The exit code is 1 only when something fails: missing optional extras are warnings. Doctor never prints project content.
+
+## Config and policy
+
+```bash
+pcs config show
+pcs config init
+```
+
+Two optional JSON files: global (`~/.pcs/config.json`, or `PCS_HOME`) and project (`.pcs/config.json`). Every setting can only tighten the defaults:
+
+- extra redaction patterns
+- extra sensitive path globs
+- a `test.allow` command-prefix allowlist
+- lower caps for note length and stored test output
+
+Nothing can switch a built-in protection off, and caps cannot exceed the defaults.
+
+- With both files present, redaction and sensitive rules are unioned, and a command must pass **both** allowlists.
+- The project file sits where an agent could edit it, so rules that must hold belong in the **global** file.
+- An invalid file fails loudly with the file and key. Patterns that match empty text or are not valid regexes are rejected.
+- Custom regexes are not checked for catastrophic backtracking: they are the operator's own.
+- The allowlist is enforced in the core, so it covers both `pcs test` and the MCP `pcs_test` tool.
+
+## Removing PCS
+
+```bash
+pcs deinit          # dry run
+pcs deinit --yes    # do it
+```
+
+`pcs deinit` removes everything PCS added: `.pcs/`, the `.pcs/` git-exclude line, project and local Claude hooks, the instruction block in `CLAUDE.md`, `AGENTS.md` and Cursor rules, the watcher login entry and the workspace registration. It refuses to proceed if a running watcher will not stop.
+
+<Callout type="info">
+  User-level hooks, the anchor signing key, the global config, and files you saved outside `.pcs`
+  are left alone and listed. `pcs connect <app> --remove` removes the MCP entry.
+</Callout>

@@ -1,0 +1,94 @@
+---
+title: Getting started
+description: Install PCS, connect your agents and run your first handoff.
+---
+
+import { Callout, Steps } from "nextra/components";
+
+# Getting started
+
+<Callout type="info">PCS needs Node.js 22.13 or newer and git.</Callout>
+
+<Steps>
+
+### Install
+
+```bash
+npm install -g @knihal/pcskit
+```
+
+The npm package is `@knihal/pcskit`. The command it installs is `pcs`.
+
+### Initialise your project
+
+```bash
+cd your-repo
+pcs init
+```
+
+This creates a `.pcs/` folder inside the project. It is excluded from git through `.git/info/exclude` (no tracked file is touched) and is readable by you only.
+
+### Connect the agents you use
+
+One command each. `--remove` undoes it:
+
+```bash
+pcs connect claude-desktop
+pcs connect cursor
+pcs connect claude-code
+```
+
+Restart the app afterwards. See [Connecting agents](/docs/guides/connecting-agents) for config paths and options.
+
+### Tell agents how to use PCS
+
+```bash
+pcs agents install      # adds a marked block to CLAUDE.md, AGENTS.md, .cursor/rules
+pcs hooks install       # Claude Code: sessions start, checkpoint and end by themselves
+```
+
+### Check that everything is in place
+
+```bash
+pcs doctor
+```
+
+</Steps>
+
+## Your first handoff
+
+Agent A works and then stops:
+
+```bash
+pcs session start --agent claude
+pcs note add task "Add the --json flag to the exporter"
+pcs test --task <task-id> -- npm test        # PCS runs it and records the result
+pcs note add next "Wire the flag in src/cli/export.ts, then update the tests"
+pcs session end --reason limit
+pcs handoff                                   # writes .pcs/HANDOFF.md
+```
+
+Agent B picks up, in any tool:
+
+```bash
+pcs resume --agent cursor
+```
+
+Resume checks the handoff against the evidence log, snapshots the repo, warns if the code moved since the handoff, and prints the brief. Every line carries its level: `[verified]`, `[reported by claude]` or `[inferred]`.
+
+With MCP connected, agents call `pcs_resume` and `pcs_handoff` themselves. If no agent is running, `pcs resume --prompt` prints a ready-to-paste takeover prompt.
+
+<Callout type="info">
+  If an agent died before writing a handoff, PCS builds one from the evidence log and marks the
+  interrupted session as `inferred`.
+</Callout>
+
+## Uninstall
+
+`pcs deinit` removes everything PCS added to a project: the `.pcs` folder, hooks, instruction blocks and the login entry. `pcs connect <app> --remove` removes the MCP entry. See [Maintenance](/docs/guides/maintenance).
+
+## Next
+
+- [The evidence model](/docs/concepts/evidence-model) explains the three levels.
+- [Handoffs and resume](/docs/concepts/handoffs) explains what is in the brief.
+- [Connecting agents](/docs/guides/connecting-agents) covers each app.

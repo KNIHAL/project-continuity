@@ -1,0 +1,33 @@
+---
+title: Dashboard
+description: A read-only local dashboard for sessions, tasks with their evidence, notes, test runs and the event timeline.
+---
+
+import { Callout } from "nextra/components";
+
+# Dashboard
+
+```bash
+pcs dashboard
+pcs dashboard --workspace
+```
+
+The dashboard shows sessions, tasks with their evidence, notes, test runs and the event timeline, served on 127.0.0.1.
+
+## Read-only on purpose
+
+There are no buttons that change the log. Changes go through the CLI or MCP, where provenance is decided.
+
+## Local-only security
+
+- Loopback bind, with a per-run random token (in the URL once, then a `SameSite=Strict` `HttpOnly` cookie).
+- Host header check against DNS rebinding.
+- Strict Content Security Policy with a per-response nonce, and `Cache-Control: no-store`.
+- No CORS headers, so other websites cannot read it.
+- The HTML is static and contains no project data. Data comes from `/api/overview` and is inserted with `textContent` only, and a test forbids `innerHTML`-style APIs in the page. Recorded text such as commit subjects, notes and test output therefore cannot become markup or script.
+- No framework, no build step and no extra dependency: one page string plus `node:http`.
+
+<Callout type="info">
+  Not included yet: a handoff file viewer, per-run detail pages and charts. They will be added only
+  if real use shows they are needed.
+</Callout>

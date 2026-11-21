@@ -1,0 +1,46 @@
+---
+title: Watcher and autostart
+description: Observe a project in the background, flag stalled sessions, and start the watcher at login on Windows, Linux and macOS.
+---
+
+import { Callout } from "nextra/components";
+
+# Watcher and autostart
+
+```bash
+pcs watch
+```
+
+The watcher turns file activity into fresh git observations while its process runs.
+
+## What it records
+
+- File events are never recorded as facts. They only trigger a fresh git observation, and a snapshot is stored only if the fingerprint (HEAD plus changed-file hashes) differs from the last one. This keeps the log small and every recorded line verified.
+- Snapshots from the watcher carry the reason: change, head, stalled or stop.
+- `.git`, `.pcs` and `node_modules` never trigger it. Sensitive files appear by name only, as in every snapshot.
+- **Stalled** means an open session with no file activity for N minutes. That is an `inferred` event, reported once per quiet period.
+
+There is one watcher per project, guarded by a lock file with its pid. Stop is requested through a stop file, so it also works on Windows where signals cannot be handled. Stale locks (dead pid) are taken over and recorded.
+
+## Start at login
+
+```bash
+pcs autostart install
+pcs autostart status
+pcs autostart uninstall
+```
+
+One entry per project, named `pcskit-watch-<folder>-<hash of the path>`. It uses each operating system's own per-user mechanism, so it needs no admin rights and installs nothing global.
+
+| System | Mechanism |
+| --- | --- |
+| Windows | A value under `HKCU\...\CurrentVersion\Run` that runs `conhost.exe --headless node cli.js watch ...` (no console window). Task Scheduler's logon trigger needs admin, so it is not used. |
+| Linux | A systemd user unit in `~/.config/systemd/user`, enabled with `--now`. It only runs while you are logged in unless `loginctl enable-linger` is set; the install output says so. |
+| macOS | A launchd agent in `~/Library/LaunchAgents`, loaded with `launchctl bootstrap`. |
+
+Paths containing quotes or newlines are refused, and systemd and XML special characters are escaped. Uninstall removes the entry and asks a running watcher to stop, and is safe when nothing is installed.
+
+<Callout type="info">
+  The Windows entry was verified live. The Linux and macOS entries are covered by generator and
+  command-sequence tests and have not yet been exercised on real machines.
+</Callout>

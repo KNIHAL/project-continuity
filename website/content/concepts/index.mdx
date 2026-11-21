@@ -1,0 +1,18 @@
+---
+title: Concepts
+description: "The ideas behind PCS: the evidence model, handoffs and resume, and the tamper-evident event log."
+---
+
+import { Cards } from "nextra/components";
+
+# Concepts
+
+Three ideas explain how PCS works and why its output can be trusted.
+
+<Cards>
+  <Cards.Card title="Evidence model" href="/docs/concepts/evidence-model" />
+  <Cards.Card title="Handoffs and resume" href="/docs/concepts/handoffs" />
+  <Cards.Card title="Event log and integrity" href="/docs/concepts/event-log" />
+</Cards>
+
+Every fact PCS records carries a source (`verified`, `reported` or `inferred`). Handoffs are built from those facts, and the log they come from is hash-chained so that changes to the past can be detected.

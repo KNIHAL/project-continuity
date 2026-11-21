@@ -395,13 +395,7 @@ export function Clients() {
       </div>
       <Reveal delay={0.1}>
         <p className="sec__more">
-          <a
-            href={`${site.repo}/blob/main/docs/CLIENTS.md`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Full connection guide &rarr;
-          </a>
+          <Link href="/docs/guides/connecting-agents">Full connection guide &rarr;</Link>
         </p>
       </Reveal>
     </Section>

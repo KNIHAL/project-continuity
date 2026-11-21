@@ -44,6 +44,15 @@ export function Footer() {
             <li>
               <Link href="/docs">Introduction</Link>
             </li>
+            <li>
+              <Link href="/docs/getting-started">Getting started</Link>
+            </li>
+            <li>
+              <Link href="/docs/concepts/evidence-model">Evidence model</Link>
+            </li>
+            <li>
+              <Link href="/docs/guides/connecting-agents">Connecting agents</Link>
+            </li>
           </ul>
         </nav>
         <nav aria-label="Project">

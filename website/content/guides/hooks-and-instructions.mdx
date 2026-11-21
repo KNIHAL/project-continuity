@@ -1,0 +1,63 @@
+---
+title: Hooks and agent instructions
+description: Make continuity automatic with Claude Code hooks, and tell any agent how to use PCS with a marked instruction block.
+---
+
+import { Callout } from "nextra/components";
+
+# Hooks and agent instructions
+
+Continuity must not depend on the agent remembering to call PCS. A hook runs outside the model, so a session is recorded, checkpointed and handed off even when the agent dies or hits its limit.
+
+## Claude Code hooks
+
+```bash
+pcs hooks install
+pcs hooks status
+pcs hooks uninstall
+```
+
+| Event | What PCS does |
+| --- | --- |
+| `SessionStart` | Starts a session (kept, not split, after a compaction) |
+| `PreCompact` | Writes a checkpoint handoff |
+| `SessionEnd` | Ends the session and writes the handoff |
+
+Hooks are installed with `timeout: 30`, because `SessionEnd`'s default budget is 1.5 seconds. The default scope is `local` (git-excluded).
+
+### Honest reasons
+
+A hook knows the session ended, not whether the task was finished. It records `switched` with the real reason in the note, never `completed`.
+
+### Hooks never fail the agent
+
+- Empty, oversized or invalid stdin is tolerated (1 MB and 2 s caps).
+- A missing folder, or a project without `pcs init`, is skipped silently, since a user-level hook runs in every project.
+- Only the active session of the same agent is ended.
+
+### Nothing recorded enters the agent's context
+
+The `SessionStart` output is static text plus a timestamp and a validated agent name. Notes, task titles and commit subjects are never copied into it, because that is a prompt-injection surface. The agent reads them through `pcs_resume`, which labels them as data.
+
+### How the installer behaves
+
+- Only PCS's own handlers are added or removed. Everything else in the settings file is kept.
+- Invalid JSON or unexpected shapes are refused, never rewritten, and writes are atomic.
+- The agent name must be shell-safe because it goes into a command line.
+
+## Instruction blocks
+
+```bash
+pcs agents install
+pcs agents uninstall
+```
+
+For agents without hooks, `pcs agents install` writes one marked block (between `<!-- pcs:begin -->` and `<!-- pcs:end -->`) into `CLAUDE.md`, `AGENTS.md` or `.cursor/rules/pcs.mdc`. It tells the agent to call `pcs_resume` first and `pcs_handoff` last.
+
+- Only that block is ever changed. A file that held nothing else is deleted on uninstall.
+- It is an explicit command because it edits files that belong to your repository.
+
+<Callout type="info">
+  Hooks and instruction blocks complement each other. Hooks guarantee the recording; instructions
+  tell the agent to read the brief when it starts.
+</Callout>

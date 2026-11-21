@@ -3,7 +3,7 @@ title: Introduction
 description: What PCS is, why it exists and how it keeps verified, reported and inferred facts apart.
 ---
 
-import { Callout } from "nextra/components";
+import { Callout, Cards } from "nextra/components";
 
 # Introduction
 
@@ -27,26 +27,25 @@ PCS records facts with their source, so the next agent knows which lines are sol
 
 A task counts as verified only when a passing test run that PCS executed is linked to it, and only while the code still matches the state that run saw.
 
-## Quick start
+## What you get
 
-<Callout type="info">PCS needs Node.js 22.13 or newer and git.</Callout>
+- **Handoffs you can trust.** Original task, completed work (verified, passing-but-code-changed, or reported only), work in progress, files touched, test results with the output of failing runs, open problems, next steps and do-not-touch notes.
+- **Tamper-evident history.** Events are stored in an append-only SHA-256 hash chain. `pcs verify` detects edits, deletions and reordering. A signed anchor kept outside the project also detects truncation and rewrites.
+- **Audit export.** `pcs export` writes the log as JSON or Markdown that can be checked without PCS.
+- **Secrets stay out.** Redaction runs before anything is stored. Files flagged sensitive (keys, `.env`) are listed by name and never read.
+- **Works with your agents.** An MCP server for any MCP client, Claude Code hooks, and instruction blocks for CLAUDE.md, AGENTS.md and Cursor rules.
+- **Always on, if you want.** A background watcher snapshots the repo as files change and flags stalled sessions.
+- **Many repos.** `pcs workspace` lists all your projects; each keeps its own log.
+- **Read-only dashboard.** `pcs dashboard` shows sessions, tasks with their evidence, notes, test runs and the event timeline on 127.0.0.1.
 
-```bash
-npm install -g @knihal/pcskit
-cd your-repo
-pcs init
-```
+<Callout type="info">
+  PCS is local only: no network access and no telemetry. Data lives in `.pcs/` inside your project.
+</Callout>
 
-Connect the agents you use. Each command is one line, and `--remove` undoes it:
+## Where to go next
 
-```bash
-pcs connect claude-desktop
-pcs connect cursor
-pcs connect claude-code
-```
-
-Check that everything is in place:
-
-```bash
-pcs doctor
-```
+<Cards>
+  <Cards.Card title="Getting started" href="/docs/getting-started" />
+  <Cards.Card title="The evidence model" href="/docs/concepts/evidence-model" />
+  <Cards.Card title="Connecting agents" href="/docs/guides/connecting-agents" />
+</Cards>

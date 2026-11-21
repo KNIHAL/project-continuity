@@ -1,0 +1,53 @@
+---
+title: Connecting agents
+description: Connect Claude Desktop, Cursor and Claude Code to PCS with one command, and check the result in a real app.
+---
+
+import { Callout } from "nextra/components";
+
+# Connecting agents
+
+`pcs connect <client>` writes the PCS MCP server into the app's config. It keeps your other servers, never overwrites a file it cannot parse, and `--remove` undoes it.
+
+| Client | Command | Config file | After connecting |
+| --- | --- | --- | --- |
+| Claude Desktop | `pcs connect claude-desktop` | `%APPDATA%\Claude\claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Linux: `~/.config/Claude/`) | Quit Claude Desktop fully and reopen |
+| Cursor (project) | `pcs connect cursor` | `.cursor/mcp.json` | Reload Cursor, Settings, MCP |
+| Cursor (all projects) | `pcs connect cursor --global` | `~/.cursor/mcp.json` | Same |
+| Claude Code | `pcs connect claude-code` | `.mcp.json` | Run `/mcp` and approve the server |
+
+Add `pcs agents install` so the agent is told to call `pcs_resume` first and `pcs_handoff` last. Claude Code can also use `pcs hooks install`. See [Hooks and agent instructions](/docs/guides/hooks-and-instructions).
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| `--read-only` | No tool can change anything |
+| `--allow-test` | Also exposes `pcs_test`, which is off by default because it runs commands on your machine |
+| `--portable` | Writes plain `pcs` instead of absolute paths; needs `pcs` on the app's PATH |
+
+By default the entry is an absolute `node` path plus script path with `--project`, because GUI apps have no project working directory and often no PATH.
+
+## Agent identity
+
+Models call themselves whatever they like. Writes are attributed to the name the agent passes, else the active session's agent, else the server's `--agent`. `pcs_session_start` takes an optional name that defaults to `--agent`, so one tool means one stable identity.
+
+<Callout type="warning">
+  The hook agent name and `pcs mcp --agent` should match. If they differ, one agent's work is split
+  over two sessions.
+</Callout>
+
+## What is tested automatically
+
+CI starts the built CLI exactly as the config file says, from a different working directory (as GUI apps do), over real MCP stdio, and runs resume, notes, session end and handoff.
+
+## Manual check in a real app (about 2 minutes)
+
+1. Run `pcs init`, then `pcs connect <client>` in your project, and restart the app.
+2. Ask the agent: "Call pcs_resume, add a next note saying 'check the connect docs', end the session, then show the handoff."
+3. Run `pcs handoff` in a terminal. The note must appear, marked `reported`.
+4. Run `pcs verify`. It must say the log is intact.
+
+## If the tools do not show up
+
+Run `pcs doctor`, check the config path in the table above, and confirm the app was fully restarted.

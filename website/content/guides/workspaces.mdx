@@ -1,0 +1,44 @@
+---
+title: Many repositories
+description: Register several projects in a workspace, give agents access to all of them, and keep each log separate.
+---
+
+import { Callout } from "nextra/components";
+
+# Many repositories
+
+Every project keeps its own `.pcs` folder. A workspace is only a registry (a name and a root path) in `~/.pcs/workspace.json`.
+
+```bash
+pcs workspace add
+pcs workspace list
+pcs workspace remove
+```
+
+- Registering needs an initialised project.
+- The same root is never registered twice (case-insensitive on Windows). Clashing folder names get `-2`, `-3`.
+- Removing a project never touches its `.pcs`.
+
+## Why not one shared database?
+
+A shared database would mix unrelated tamper-evident chains, make one repo's corruption everyone's problem, and break the property that a project folder is self-contained.
+
+## MCP across projects
+
+```bash
+pcs mcp --workspace
+```
+
+With `--workspace`, every MCP tool takes an optional `project`.
+
+- With one project registered, no name is needed.
+- With several, a missing or unknown name is a tool error that lists the valid names. PCS never guesses which repo to write to.
+- Names are matched exactly. Paths are not accepted from the agent.
+- The registry is re-read on every call, so `pcs workspace add` works without restarting the agent.
+
+`pcs dashboard --workspace` shows all registered projects.
+
+<Callout type="info">
+  Not done yet: tasks or handoffs that span repos, and a combined timeline. They will be added when
+  real use needs them.
+</Callout>

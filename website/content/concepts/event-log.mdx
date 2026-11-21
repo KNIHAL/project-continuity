@@ -1,0 +1,82 @@
+---
+title: Event log and integrity
+description: The append-only hash chain behind PCS, what pcs verify can and cannot detect, signed anchors and audit export.
+---
+
+import { Callout } from "nextra/components";
+
+# Event log and integrity
+
+PCS keeps its history in a SQLite database at `.pcs/` (Node's built-in `node:sqlite`, no native build step). Events are append-only and hash-chained, so changes to the past can be detected.
+
+## The hash chain
+
+Each event's hash is SHA-256 over the previous hash and the event's content. Append-only behaviour is enforced by SQLite triggers, and the chain is checked by:
+
+```bash
+pcs verify
+```
+
+`pcs verify` detects edited, removed-in-the-middle or reordered events. Snapshots and test runs are immutable too, and each one's digest is stored in a hash-chained event, so an edited or deleted snapshot or run is caught even if the triggers were dropped.
+
+| Exit code | Meaning |
+| --- | --- |
+| 0 | OK |
+| 1 | Error |
+| 2 | Integrity failure |
+
+<Callout type="warning">
+  The chain alone does not detect truncation of the newest events, or a full rewrite by someone who
+  recomputes every hash. Keep a signed anchor or an export somewhere else to close that gap.
+</Callout>
+
+## Signed anchor
+
+```bash
+pcs anchor
+pcs verify --anchor <file>
+```
+
+`pcs anchor` writes a small JSON file (head hash, last event id, count, timestamp) signed with a local ed25519 key. The key lives in the workspace folder (`~/.pcs/anchor.key`, or `PCS_HOME`), not in the project, so whoever can rewrite `.pcs` cannot forge anchors.
+
+`pcs verify --anchor` runs the full integrity check, then checks the signature, that the key is this machine's, and that the anchored event still exists with the same hash and count. This catches truncation and a full recomputed rewrite.
+
+- Keep the anchor file outside the project: another disk, a commit, a ticket.
+- It is local only: no network.
+- Anchors are not rotated. A lost key means old anchors can no longer be trusted by `verify`.
+- Creating an anchor on a log that already fails verification is refused.
+
+## Audit export
+
+```bash
+pcs export --format json -o audit.json
+pcs export --check audit.json
+```
+
+`pcs export [--format json or md] [-o file] [--from id] [--to id]` writes the evidence log as an audit trail: project, integrity result at export time, head hash, counts per type and every event with its hashes. It exits 2 when the log fails its own check, but still writes the file, flagged.
+
+JSON exports can be checked without PCS. For each event:
+
+```text
+hash = sha256(JSON.stringify([prev_hash, ts, type, provenance, source, payload_json]
+       + [session_id] when not null))
+```
+
+The payload is serialised with sorted keys, and the first `prev_hash` is 64 zeros. The algorithm is written into the file. `pcs export --check <file>` re-verifies one, including a partial range, which is checked from its first event's `prev_hash`.
+
+A check proves the export is internally consistent. To prove it matches the live log, compare its head with a signed anchor.
+
+## Browsing the log
+
+```bash
+pcs log --type "test.*" --provenance verified -n 20
+```
+
+`pcs log` shows the newest events (oldest first) with filters `--type` (`*` wildcard, `%` and `_` literal), `--provenance`, `--after` and `-n`. Control characters are stripped.
+
+## Privacy of the log
+
+- Event payloads are redacted before storage (keys, tokens, JWTs, private keys, `password=...`).
+- Files flagged sensitive (`.env`, keys) are listed by name and never opened. Files are inspected with `lstat`, and symlinks are recorded, not followed.
+- Caps: 50 MB per file hashed, 5000 files per snapshot (truncation is flagged).
+- `.pcs/` is created owner-only: modes 0700 and 0600 on POSIX, and on Windows an ACL for the current user, SYSTEM and Administrators only.
