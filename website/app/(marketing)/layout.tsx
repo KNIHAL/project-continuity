@@ -3,6 +3,7 @@ import { Footer } from "@/components/marketing/Footer";
 import { Header } from "@/components/marketing/Header";
 import { MotionProvider } from "@/components/motion/MotionProvider";
 import "./marketing.css";
+import "./landing.css";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
