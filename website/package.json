@@ -1,0 +1,42 @@
+{
+  "name": "pcskit-website",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Landing page and documentation site for PCS (pcskit)",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind",
+    "start": "next start",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "biome lint --error-on-warnings .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "postinstall": "patch-package"
+  },
+  "dependencies": {
+    "motion": "^14.14.0",
+    "next": "^16.4.6",
+    "nextra": "^4.6.1",
+    "nextra-theme-docs": "^4.6.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.8",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "pagefind": "^1.6.0",
+    "patch-package": "^8.0.1",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "katex": "^0.19.1",
+    "minimatch": "^11.0.9"
+  }
+}

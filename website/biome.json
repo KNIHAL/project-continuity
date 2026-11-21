@@ -1,0 +1,20 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
+  "root": false,
+  "extends": "//",
+  "files": {
+    "includes": ["**", "!**/.next", "!**/node_modules", "!**/public/_pagefind", "!**/next-env.d.ts"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "style": { "noNonNullAssertion": "off" }
+    }
+  }
+}

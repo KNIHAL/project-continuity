@@ -1,0 +1,52 @@
+---
+title: Introduction
+description: What PCS is, why it exists and how it keeps verified, reported and inferred facts apart.
+---
+
+import { Callout } from "nextra/components";
+
+# Introduction
+
+**Your AI agent stopped. The next one picks up exactly where it left off.**
+
+PCS (Project Continuity System) is a local-first command line tool and MCP server that hands work from one AI coding agent to the next. When an agent hits a token limit, you start a new chat, or you switch from Claude to Cursor, PCS rebuilds what actually happened in the project from git and recorded evidence, and gives the next agent a brief it can trust.
+
+Never trust an agent's "done". PCS keeps what it saw itself apart from what an agent claimed.
+
+## Why PCS
+
+Agents lose context when a session ends. The usual fix is a summary written by the agent that just ran out of room, which is exactly the part you cannot trust: it may say tests pass when they never ran, or forget the file it was halfway through editing.
+
+PCS records facts with their source, so the next agent knows which lines are solid:
+
+| Level | Meaning | Example |
+| --- | --- | --- |
+| `verified` | PCS observed it itself | git state, file hashes, a test run PCS executed with its exit code |
+| `reported` | A person or agent claimed it | "task done", "next step is X" |
+| `inferred` | Derived from other facts | "the session was interrupted" |
+
+A task counts as verified only when a passing test run that PCS executed is linked to it, and only while the code still matches the state that run saw.
+
+## Quick start
+
+<Callout type="info">PCS needs Node.js 22.13 or newer and git.</Callout>
+
+```bash
+npm install -g @knihal/pcskit
+cd your-repo
+pcs init
+```
+
+Connect the agents you use. Each command is one line, and `--remove` undoes it:
+
+```bash
+pcs connect claude-desktop
+pcs connect cursor
+pcs connect claude-code
+```
+
+Check that everything is in place:
+
+```bash
+pcs doctor
+```
